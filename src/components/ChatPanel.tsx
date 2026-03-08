@@ -14,6 +14,8 @@ interface ChatPanelProps {
   workspaceId: string;
 }
 
+const BACKEND_URL = "http://localhost:8000";
+
 const SUGGESTED_QUESTIONS = [
   "Summarize the key insights from my sources",
   "What are the main themes discussed?",
@@ -43,24 +45,8 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
   };
 
   const loadMessages = async () => {
-    const data = [
-      {
-        id: "1",
-        role: "user",
-        content: "What are the key insights from my sources?",
-        source_references: null,
-        created_at: new Date().toISOString(),
-      },
-      {
-        id: "2",
-        role: "assistant",
-        content: "Here are the key insights...",
-        source_references: [{ filename: "doc1.pdf", page: 1 }],
-        created_at: new Date().toISOString(),
-      },
-    ];
-
-    setMessages(data);
+    // Starting with an empty message list for the demo
+    setMessages([]);
   };
 
   const sendMessage = async (content: string) => {
@@ -79,43 +65,47 @@ export function ChatPanel({ workspaceId }: ChatPanelProps) {
     setMessages((prev) => [...prev, userMessage]);
     setIsTyping(true);
 
-    setTimeout(() => {
-      const aiResponse = generateAIResponse(content);
+    try {
+      const response = await fetch(`${BACKEND_URL}/ask`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ question: content }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
       setMessages((prev) => [
         ...prev,
         {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: aiResponse.content,
-          source_references: aiResponse.sources,
+          content: data.answer || "I'm sorry, I couldn't find a relevant answer to your question in the document.",
+          source_references: null, // Backend doesn't return sources yet
           created_at: new Date().toISOString(),
         },
       ]);
+    } catch (error) {
+      console.error("Error asking question:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: "Sorry, I encountered an error while processing your request.",
+          source_references: null,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+    } finally {
       setIsTyping(false);
       setLoading(false);
-    }, 1500);
-  };
-
-  const generateAIResponse = (userMessage: string) => {
-    const responses = [
-      {
-        content: `Based on your uploaded sources, I found relevant information about "${userMessage}". The documents indicate several key points that address your question. Would you like me to elaborate on any specific aspect?`,
-        sources: [{ filename: "document.pdf", page: 3 }],
-      },
-      {
-        content: `I've analyzed your sources regarding "${userMessage}". Here's what I found: The primary themes align with current research in this area. The evidence suggests a strong correlation between the concepts you're exploring.`,
-        sources: [{ filename: "research.pdf", page: 12 }],
-      },
-      {
-        content: `Great question! According to the sources in this workspace, particularly the documents uploaded recently, there are multiple perspectives on "${userMessage}". Let me break down the key findings for you.`,
-        sources: [
-          { filename: "notes.txt" },
-          { filename: "presentation.pdf", slide: 5 },
-        ],
-      },
-    ];
-
-    return responses[Math.floor(Math.random() * responses.length)];
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

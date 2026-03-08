@@ -15,6 +15,8 @@ interface SourcesPanelProps {
   workspaceId: string;
 }
 
+const BACKEND_URL = "http://localhost:8000";
+
 export function SourcesPanel({ workspaceId }: SourcesPanelProps) {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,18 +29,18 @@ export function SourcesPanel({ workspaceId }: SourcesPanelProps) {
   }, [workspaceId]);
 
   const loadSources = async () => {
-    const data = [
-      {
-        id: "1",
-        filename: "example.pdf",
-        file_type: "pdf",
-        status: "indexed",
-        file_size: 1234567,
-        created_at: "2023-01-01",
-      },
-    ];
-    setSources(data);
-    setLoading(false);
+    try {
+      const response = await fetch(`${BACKEND_URL}/files`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch files: ${response.status}`);
+      }
+      const data = await response.json();
+      setSources(data);
+    } catch (error) {
+      console.error("Error loading sources:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -70,17 +72,48 @@ export function SourcesPanel({ workspaceId }: SourcesPanelProps) {
   const uploadFiles = async (files: File[]) => {
     for (const file of files) {
       const fileType = getFileType(file.type);
+      const tempId = Math.random().toString(36).substr(2, 9);
 
-      const newSource = {
-        id: Math.random().toString(36).substr(2, 9),
+      const newSource: Source = {
+        id: tempId,
         filename: file.name,
         file_type: fileType,
-        status: "indexed",
+        status: "uploading",
         file_size: file.size,
         created_at: new Date().toISOString(),
       };
 
       setSources((prev) => [newSource, ...prev]);
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const response = await fetch(`${BACKEND_URL}/upload`, {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Upload failed with status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Upload success:", data);
+
+        setSources((prev) =>
+          prev.map((s) =>
+            s.id === tempId ? { ...s, status: "indexed" } : s
+          )
+        );
+      } catch (error) {
+        console.error("Upload error:", error);
+        setSources((prev) =>
+          prev.map((s) =>
+            s.id === tempId ? { ...s, status: "error" } : s
+          )
+        );
+      }
     }
   };
 
@@ -92,7 +125,17 @@ export function SourcesPanel({ workspaceId }: SourcesPanelProps) {
   };
 
   const deleteSource = async (sourceId: string) => {
-    setSources((prev) => prev.filter((source) => source.id !== sourceId));
+    try {
+      const response = await fetch(`${BACKEND_URL}/files/${sourceId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to delete file: ${response.status}`);
+      }
+      setSources((prev) => prev.filter((source) => source.id !== sourceId));
+    } catch (error) {
+      console.error("Error deleting source:", error);
+    }
   };
 
   const getFileIcon = (fileType: string) => {
