@@ -1,5 +1,10 @@
 # 📄 Multimodal RAG System (Text + Images + Tables)
 
+## 🔗 Project Repositories
+
+- 🔧 Backend: https://github.com/ShaikhWahid99/backend-rag
+- 🎨 Frontend: https://github.com/ShaikhWahid99/RAG-Frontend
+
 ## 🚀 Overview
 
 This project is a **Multimodal Retrieval-Augmented Generation (RAG) system** that enables users to query documents using natural language and retrieve answers from:
