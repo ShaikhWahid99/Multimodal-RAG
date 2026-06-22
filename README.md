@@ -2,8 +2,8 @@
 
 ## 🔗 Project Repositories
 
-- 🔧 Backend: https://github.com/ShaikhWahid99/backend-rag
-- 🎨 Frontend: https://github.com/ShaikhWahid99/RAG-Frontend
+## 🔧 Backend: https://github.com/ShaikhWahid99/backend-rag
+## 🎨 Frontend: https://github.com/ShaikhWahid99/RAG-Frontend
 
 ## 🚀 Overview
 
